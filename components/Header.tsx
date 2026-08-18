@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({
   cartItemCount,
   totalAmount,
   onOpenCart,
-  eventName = "Grand Food Fest '26",
+  eventName = "Qrush 🔥 Youthful",
   stallLocation = 'Stall #A-04 • Left Side',
 }) => {
   return (

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Food Stall Payment",
-  description: "Simple digital payment for food stalls",
+  title: "Qrush - Scan into the rush",
+  description: "Youthful F&B event contactless payments. Scan into the rush.",
 };
 
 export default function RootLayout({

@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import FoodStallApp from '../page';
+import FoodStallApp from '@/components/FoodStallApp';
 
 export default function MenuPage() {
   return (
