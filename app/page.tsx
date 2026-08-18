@@ -6,6 +6,7 @@ import { FeatureGrid } from '@/components/home/FeatureGrid';
 import { WorkflowSteps } from '@/components/home/WorkflowSteps';
 import { StallShowcase } from '@/components/home/StallShowcase';
 import { EventOrganizerBenefits } from '@/components/home/EventOrganizerBenefits';
+import { PricingSection } from '@/components/home/PricingSection';
 import { FaqSection } from '@/components/home/FaqSection';
 import { Footer } from '@/components/home/Footer';
 
@@ -20,6 +21,7 @@ export default function HomePage() {
         <WorkflowSteps />
         <StallShowcase />
         <EventOrganizerBenefits />
+        <PricingSection />
         <FaqSection />
       </main>
       <Footer />

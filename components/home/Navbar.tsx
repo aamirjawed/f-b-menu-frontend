@@ -26,6 +26,7 @@ export const Navbar: React.FC = () => {
           <a href="#features" className="hover:text-amber-400 transition-colors">Features</a>
           <a href="#workflow" className="hover:text-amber-400 transition-colors">How It Works</a>
           <a href="#stalls" className="hover:text-amber-400 transition-colors">Stalls & Menus</a>
+          <a href="#pricing" className="hover:text-amber-400 transition-colors">Pricing</a>
           <a href="#organizers" className="hover:text-amber-400 transition-colors">Event Organizers</a>
           <a href="#faq" className="hover:text-amber-400 transition-colors">FAQ</a>
         </nav>
