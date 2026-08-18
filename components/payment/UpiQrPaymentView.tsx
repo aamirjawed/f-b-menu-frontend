@@ -48,32 +48,46 @@ export const UpiQrPaymentView: React.FC<UpiQrPaymentViewProps> = ({
     };
   }, [amount, vendorId, orderId]);
 
-  // Automatic Background Verification Polling
+  // Smart Focus Automation: Triggers 1 verification check when user returns from UPI app
   useEffect(() => {
-    const activeId = orderId || qrResponse?.qrData?.orderId;
-    if (!activeId) return;
+    const targetOrderId = orderId || qrResponse?.qrData?.orderId;
+    if (!targetOrderId) return;
+    const activeId: string = targetOrderId;
 
-    let isMounted = true;
-    const interval = setInterval(async () => {
-      const result = await verifyPaymentStatus(activeId);
-      if (!isMounted) return;
+    let isSubscribed = true;
 
-      if (result.verified) {
-        setStatusMessage('✓ Payment Verified Successfully!');
-        if (onPaymentConfirmed) {
-          onPaymentConfirmed();
-        }
-      } else if (result.message && result.message.includes('failed')) {
-        setStatusMessage('❌ Payment Failed');
-        if (onPaymentFailed) {
-          onPaymentFailed(result.message);
+    async function checkVerificationOnReturn() {
+      if (document.visibilityState === 'visible') {
+        setStatusMessage('Checking payment status...');
+        const result = await verifyPaymentStatus(activeId);
+        if (!isSubscribed) return;
+
+        if (result.verified) {
+          setStatusMessage('✓ Payment Verified Successfully!');
+          if (onPaymentConfirmed) {
+            onPaymentConfirmed();
+          }
+        } else if (result.message && result.message.includes('failed')) {
+          setStatusMessage('❌ Payment Failed');
+          if (onPaymentFailed) {
+            onPaymentFailed(result.message);
+          }
+        } else {
+          setStatusMessage('Awaiting UPI payment confirmation...');
         }
       }
-    }, 3500);
+    }
+
+    // Trigger on tab re-focus (when user returns from UPI app)
+    const handleVisibilityChange = () => {
+      checkVerificationOnReturn();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      isSubscribed = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [orderId, qrResponse, onPaymentConfirmed, onPaymentFailed]);
 
