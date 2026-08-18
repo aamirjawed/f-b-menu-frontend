@@ -12,7 +12,7 @@ export const PricingSection: React.FC = () => {
       features: [
         'Instant UPI & Card QR Payments',
         'Auto Payment Verification Polling',
-        'Bartender & Staff Web POS Scanners',
+        'Counter & Staff Web POS Scanners',
         'Unlimited Stall & Menu Catalogs',
         'Real-time Sales & Token Analytics',
         'Zero Setup or Monthly Fixed Fees',
@@ -25,7 +25,7 @@ export const PricingSection: React.FC = () => {
       badge: 'BEST VALUE FOR VENUES',
       price: '1.2%',
       subtext: 'Volume discount pricing',
-      description: 'Ideal for nightlife clubs, recurring weekend venues, food courts, and bar chains.',
+      description: 'Ideal for weekend venues, food carnivals, food courts, and stall chains.',
       features: [
         'Everything in Single Pass',
         'Priority Webhook & Socket Dispatch',

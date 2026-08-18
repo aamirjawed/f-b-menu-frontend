@@ -37,7 +37,7 @@ export const Navbar: React.FC = () => {
             href="/bartender"
             className="hidden sm:inline-flex px-3.5 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-bold transition-all"
           >
-            🍸 Bartender POS
+            📋 Staff POS
           </Link>
           <Link
             href="/menu"

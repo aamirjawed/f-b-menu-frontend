@@ -7,7 +7,7 @@ export const FaqSection: React.FC = () => {
       a: 'No. Guests simply point their phone camera at the stall QR code. The digital menu opens directly in their default browser (Safari, Chrome) with zero app download or registration required.',
     },
     {
-      q: 'How does the bartender or stall staff verify that the guest paid?',
+      q: 'How does the counter or stall staff verify that the guest paid?',
       a: 'Once payment is verified via UPI or Card, a verified Order QR Code and unique Token Number appear on the guest’s screen. Staff scan this QR on their web POS scanner to mark the order served.',
     },
     {
@@ -15,8 +15,8 @@ export const FaqSection: React.FC = () => {
       a: 'All major UPI applications (Google Pay, PhonePe, Paytm, BHIM) via dynamic UPI QR code, as well as Credit Cards, Debit Cards, and NetBanking via Razorpay.',
     },
     {
-      q: 'Can multiple stalls and bar counters operate simultaneously?',
-      a: 'Yes! The platform supports unlimited independent stall counters, bars, food trucks, and VIP lounges, each with its own vendor catalog and bartender staff logins.',
+      q: 'Can multiple stalls and beverage counters operate simultaneously?',
+      a: 'Yes! The platform supports unlimited independent stall counters, food trucks, and VIP lounges, each with its own vendor catalog and staff logins.',
     },
   ];
 

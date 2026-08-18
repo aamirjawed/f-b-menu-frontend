@@ -14,7 +14,7 @@ export const EventOrganizerBenefits: React.FC = () => {
               Maximize Beverage & Food Sales at your Festival
             </h2>
             <p className="text-sm text-neutral-300 leading-relaxed">
-              Queue friction reduces drink sales by up to 35% during concert peaks. FestPay converts physical lines into instant digital orders, increasing counter throughput and eliminating revenue leakages.
+              Queue friction reduces food & drink sales by up to 35% during concert peaks. Qrush converts physical lines into instant digital orders, increasing counter throughput and eliminating revenue leakages.
             </p>
 
             <div className="space-y-4 pt-2">
@@ -23,8 +23,8 @@ export const EventOrganizerBenefits: React.FC = () => {
                   ✓
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Higher Bar & Food Revenue</h3>
-                  <p className="text-xs text-neutral-400">Faster guest ordering means more repeat drink purchases per attendee.</p>
+                  <h3 className="text-sm font-bold text-white">Higher Stall & Food Revenue</h3>
+                  <p className="text-xs text-neutral-400">Faster guest ordering means more repeat item purchases per attendee.</p>
                 </div>
               </div>
 
@@ -33,8 +33,8 @@ export const EventOrganizerBenefits: React.FC = () => {
                   ✓
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Real-Time Bartender POS Sync</h3>
-                  <p className="text-xs text-neutral-400">Bartender web scanners update order status instantly across all terminals.</p>
+                  <h3 className="text-sm font-bold text-white">Real-Time Counter POS Sync</h3>
+                  <p className="text-xs text-neutral-400">Staff web scanners update order status instantly across all terminals.</p>
                 </div>
               </div>
 
@@ -62,7 +62,7 @@ export const EventOrganizerBenefits: React.FC = () => {
             <div className="space-y-4 text-xs">
               <div className="space-y-1">
                 <div className="flex justify-between font-mono">
-                  <span className="text-neutral-400">Drink Serving Velocity:</span>
+                  <span className="text-neutral-400">Order Serving Velocity:</span>
                   <span className="text-emerald-400 font-bold">3.2x Faster</span>
                 </div>
                 <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
@@ -93,7 +93,7 @@ export const EventOrganizerBenefits: React.FC = () => {
 
             <div className="pt-4 border-t border-neutral-800 text-center">
               <p className="text-[11px] text-neutral-400">
-                Ready to deploy FestPay for your upcoming festival, concert, or sports event?
+                Ready to deploy Qrush for your upcoming festival, concert, or sports event?
               </p>
             </div>
           </div>

@@ -18,14 +18,14 @@ export const FeatureGrid: React.FC = () => {
       description: 'Once payment is confirmed, an encrypted Order QR code and token receipt are generated for counter pickup.',
     },
     {
-      icon: '🍸',
-      title: 'Bartender & Staff POS Scanner',
-      description: 'Bartenders can scan customer Order QR codes directly using camera or token lookup to mark orders served in real-time.',
+      icon: '📋',
+      title: 'Counter & Staff POS Scanner',
+      description: 'Counter staff can scan customer Order QR codes directly using camera or token lookup to mark orders served in real-time.',
     },
     {
       icon: '🎪',
       title: 'Multi-Stall & Vendor Routing',
-      description: 'Supports multiple independent stalls, bars, and food trucks within a single festival or venue with custom menus.',
+      description: 'Supports multiple independent food stalls, food trucks, and beverage counters within a single festival or venue with custom menus.',
     },
     {
       icon: '📊',

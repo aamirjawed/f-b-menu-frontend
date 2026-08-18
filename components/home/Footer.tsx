@@ -24,7 +24,7 @@ export const Footer: React.FC = () => {
               🍔 Open Food Menu
             </Link>
             <Link href="/bartender" className="hover:text-amber-400 transition-colors">
-              🍸 Bartender Portal
+              📋 Staff POS Portal
             </Link>
             <a href="#features" className="hover:text-amber-400 transition-colors">
               Features
@@ -42,7 +42,7 @@ export const Footer: React.FC = () => {
             <span>Event Payment Gateway Engine • Operational</span>
           </div>
           <div>
-            © {new Date().getFullYear()} FestPay Event Management. All rights reserved.
+            © {new Date().getFullYear()} Qrush Event Management. All rights reserved.
           </div>
         </div>
       </div>

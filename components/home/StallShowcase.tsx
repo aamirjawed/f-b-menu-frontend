@@ -4,9 +4,9 @@ import Link from 'next/link';
 export const StallShowcase: React.FC = () => {
   const stalls = [
     {
-      name: 'Stall #01 • Craft Cocktail Bar',
+      name: 'Stall #01 • Fresh Juice & Smoothie Bar',
       badge: 'BEVERAGES',
-      items: ['Signature Mojito', 'Smoked Old Fashioned', 'Spiced Rum Punch'],
+      items: ['Fresh Berry Smoothie', 'Tropical Mango Sparkler', 'Iced Lemon Mint Tea'],
       speed: '~20s pickup',
     },
     {
@@ -22,9 +22,9 @@ export const StallShowcase: React.FC = () => {
       speed: '~60s pickup',
     },
     {
-      name: 'Stall #04 • Craft Brews & Desserts',
+      name: 'Stall #04 • Specialty Drinks & Desserts',
       badge: 'BEVERAGES & DESSERTS',
-      items: ['Cold Brew Coffee Stout', 'Churros with Belgian Chocolate', 'Mango Gelato'],
+      items: ['Nitro Cold Brew Coffee', 'Churros with Belgian Chocolate', 'Mango Gelato'],
       speed: '~15s pickup',
     },
   ];

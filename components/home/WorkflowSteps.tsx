@@ -22,9 +22,9 @@ export const WorkflowSteps: React.FC = () => {
     },
     {
       num: '04',
-      icon: '🍸',
+      icon: '🛍️',
       title: 'Scan & Collect at Counter',
-      description: 'The bartender or counter staff scans the guest Order QR Code on their staff POS modal to mark the order served and deliver items immediately.',
+      description: 'The counter staff scans the guest Order QR Code on their staff POS modal to mark the order served and deliver items immediately.',
     },
   ];
 
@@ -37,7 +37,7 @@ export const WorkflowSteps: React.FC = () => {
             Seamless Guest & Staff Workflow
           </span>
           <h2 className="text-2xl sm:text-4xl font-black text-white">
-            How FestPay Works at Your Event
+            How Qrush Works at Your Event
           </h2>
           <p className="text-sm text-neutral-400">
             From scanning the QR code at a food counter to walking away with fresh drinks in under 30 seconds.

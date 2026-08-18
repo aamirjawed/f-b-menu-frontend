@@ -37,7 +37,7 @@ export const Hero: React.FC = () => {
                 href="/bartender"
                 className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-sm border border-neutral-700 transition-all text-center flex items-center justify-center gap-2"
               >
-                <span>🍸 Bartender / Staff POS</span>
+                <span>📋 Counter Staff POS</span>
               </Link>
             </div>
 
@@ -66,7 +66,7 @@ export const Hero: React.FC = () => {
                 <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
                   <div>
                     <h2 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Live Festival Stall</h2>
-                    <p className="text-sm font-bold text-white">Stall #04 • Craft Brewery & Bites</p>
+                    <p className="text-sm font-bold text-white">Stall #04 • Artisan Juices & Bites</p>
                   </div>
                   <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500/30">
                     LIVE NOW
@@ -77,7 +77,7 @@ export const Hero: React.FC = () => {
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800/60 border border-neutral-700/50">
                     <div>
-                      <p className="font-bold text-white">Craft Pale Ale (500ml)</p>
+                      <p className="font-bold text-white">Sparkling Citrus Mocktail (500ml)</p>
                       <p className="text-[10px] text-neutral-400 font-mono">Qty: 2 × ₹250</p>
                     </div>
                     <span className="font-bold text-amber-400 font-mono">₹500</span>
@@ -107,7 +107,7 @@ export const Hero: React.FC = () => {
                       [ORDER QR<br/>VERIFIED]
                     </div>
                   </div>
-                  <p className="text-[10px] text-neutral-400 font-mono">Show QR to bartender to claim order</p>
+                  <p className="text-[10px] text-neutral-400 font-mono">Show QR to counter staff to claim order</p>
                 </div>
               </div>
             </div>
