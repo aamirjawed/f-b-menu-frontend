@@ -242,3 +242,22 @@ export async function updateBartenderOrderStatus(orderId: string, orderStatus: '
     return { success: false, error: err.message || 'Network error updating order' };
   }
 }
+
+// 7. Fetch Single Order Details by Order ID or Token Number (Live Database Check)
+export async function getBartenderOrderById(orderId: string): Promise<{ success: boolean; data?: BartenderOrder; error?: string }> {
+  try {
+    const token = getBartenderToken();
+    if (!token) return { success: false, error: "No active session token" };
+    const res = await fetch(`${API_BASE_URL}/bartenders/orders/${encodeURIComponent(orderId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.message || "Order not found" };
+    }
+    return { success: true, data: data.data };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error fetching order" };
+  }
+}

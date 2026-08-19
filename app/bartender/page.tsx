@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BartenderSession,
@@ -8,7 +8,7 @@ import {
   getBartenderToken,
   getBartenderSession,
   getBartenderProfile,
-  getBartenderOrders,
+  getBartenderOrderById,
   updateBartenderOrderStatus,
   clearBartenderSession,
 } from '@/services/bartenderApi';
@@ -16,22 +16,15 @@ import {
 export default function BartenderDashboardPage() {
   const router = useRouter();
   const [bartender, setBartender] = useState<BartenderSession | null>(null);
-  const [orders, setOrders] = useState<BartenderOrder[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [scannedOrder, setScannedOrder] = useState<BartenderOrder | null>(null);
+  const [isLoadingOrder, setIsLoadingOrder] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Direct QR payload data (displayed instantly from QR scan, no backend lookup)
-  const [qrOrderData, setQrOrderData] = useState<{
-    orderId: string;
-    token: string;
-    items: { name: string; qty: number; price: number }[];
-    total: number;
-  } | null>(null);
-
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const lastScannedIdRef = useRef<string>('');
 
   // Auth check & profile fetch
   useEffect(() => {
@@ -41,7 +34,6 @@ export default function BartenderDashboardPage() {
       return;
     }
 
-    // Pre-populate with local session to prevent flickering or premature logout
     const localSession = getBartenderSession();
     if (localSession) {
       setBartender(localSession);
@@ -57,24 +49,27 @@ export default function BartenderDashboardPage() {
     });
   }, [router]);
 
-  // Fetch orders queue
-  const fetchOrders = useCallback(async () => {
-    const res = await getBartenderOrders();
-    if (res.success && Array.isArray(res.data)) {
-      setOrders(res.data);
+  // Live query order from backend whenever searchInput or scan changes
+  const fetchOrderLive = async (targetId: string) => {
+    if (!targetId || !targetId.trim()) {
+      setScannedOrder(null);
+      return;
     }
-  }, []);
+    setIsLoadingOrder(true);
+    const cleanId = targetId.trim();
+    const res = await getBartenderOrderById(cleanId);
+    setIsLoadingOrder(false);
 
-  useEffect(() => {
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 3000);
-    return () => clearInterval(interval);
-  }, [fetchOrders]);
+    if (res.success && res.data) {
+      setScannedOrder(res.data);
+    } else {
+      setScannedOrder(null);
+    }
+  };
 
   // Enable Camera Stream + Real-Time QR Scanning via BarcodeDetector
   useEffect(() => {
     let scanInterval: ReturnType<typeof setInterval> | null = null;
-    let lastScannedValue = '';
 
     if (typeof window !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices
@@ -97,41 +92,28 @@ export default function BartenderDashboardPage() {
                 const barcodes = await detector.detect(videoRef.current);
                 if (barcodes.length > 0) {
                   const rawValue = barcodes[0].rawValue;
-                  if (!rawValue || rawValue === lastScannedValue) return;
-                  lastScannedValue = rawValue;
+                  if (!rawValue || rawValue === lastScannedIdRef.current) return;
+                  lastScannedIdRef.current = rawValue;
 
                   // Haptic vibration feedback on scan
                   if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
-                  // Try to parse QR JSON payload from OrderSuccessModal
+                  let targetOrderId = rawValue;
                   try {
                     const parsed = JSON.parse(rawValue);
-                    if (parsed.orderId && parsed.items) {
-                      // Full order QR payload — display directly
-                      setQrOrderData({
-                        orderId: parsed.orderId,
-                        token: parsed.token || '',
-                        items: Array.isArray(parsed.items) ? parsed.items : [],
-                        total: parsed.total || 0,
-                      });
-                      setSearchInput(parsed.orderId);
-                      setScannedOrder(null);
-                    } else {
-                      const searchTerm = parsed.orderId || parsed.token || parsed.id || rawValue;
-                      setSearchInput(String(searchTerm).replace(/^#/, ''));
-                    }
+                    targetOrderId = parsed.orderId || parsed.id || parsed.token || rawValue;
                   } catch {
-                    // Not JSON — use raw text as search (e.g. plain Order ID or Token #)
-                    setQrOrderData(null);
-                    setSearchInput(rawValue.replace(/^#/, ''));
+                    targetOrderId = rawValue;
                   }
+
+                  const cleanId = String(targetOrderId).replace(/^#/, '').trim();
+                  setSearchInput(cleanId);
+                  fetchOrderLive(cleanId);
                 }
               } catch {
-                // BarcodeDetector.detect() can throw on some frames, ignore
+                // Ignore transient frame detection errors
               }
-            }, 350);
-          } else {
-            console.warn('[QR Scanner] BarcodeDetector API not supported in this browser. Use manual token entry.');
+            }, 300);
           }
         })
         .catch((err) => {
@@ -148,24 +130,6 @@ export default function BartenderDashboardPage() {
     };
   }, []);
 
-  // Filter scanned order when typing or scanning
-  useEffect(() => {
-    if (!searchInput.trim()) {
-      setScannedOrder(null);
-      return;
-    }
-
-    const term = searchInput.trim().toLowerCase();
-    const match = orders.find((o) => {
-      const idMatch = o.id.toLowerCase().includes(term);
-      const tokenMatch = (o.tokenNumber || '').toLowerCase().includes(term);
-      const nameMatch = (o.customerName || '').toLowerCase().includes(term);
-      return idMatch || tokenMatch || nameMatch;
-    });
-
-    setScannedOrder(match || null);
-  }, [searchInput, orders]);
-
   const handleMarkCompleted = async (orderId: string) => {
     setIsProcessing(true);
     setStatusMessage(null);
@@ -174,14 +138,27 @@ export default function BartenderDashboardPage() {
     setIsProcessing(false);
 
     if (res.success) {
-      setStatusMessage('✓ ORDER COMPLETED');
-      setSearchInput('');
-      setScannedOrder(null);
-      setQrOrderData(null);
-      fetchOrders();
-      setTimeout(() => setStatusMessage(null), 2000);
+      setStatusMessage('✓ ORDER MARKED AS COMPLETED');
+      // Update local state to reflect completed status immediately
+      setScannedOrder((prev) => (prev ? { ...prev, orderStatus: 'completed', completedAt: new Date().toISOString() } : null));
+
+      // After 2.5 seconds, reset view back to camera for the next customer
+      setTimeout(() => {
+        setStatusMessage(null);
+        setSearchInput('');
+        setScannedOrder(null);
+        lastScannedIdRef.current = '';
+      }, 2500);
     } else {
       setStatusMessage('⚠️ Failed to complete order');
+    }
+  };
+
+  const handleManualSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchInput.trim()) {
+      lastScannedIdRef.current = searchInput.trim();
+      fetchOrderLive(searchInput.trim());
     }
   };
 
@@ -190,15 +167,22 @@ export default function BartenderDashboardPage() {
     router.replace('/bartender/login');
   };
 
+  const handleResetScanner = () => {
+    setSearchInput('');
+    setScannedOrder(null);
+    lastScannedIdRef.current = '';
+    setStatusMessage(null);
+  };
+
   return (
     <div className="min-h-screen bg-white text-black flex flex-col font-sans">
-      {/* Black & White Header */}
+      {/* Header */}
       <header className="bg-black text-white px-4 py-3 border-b-2 border-black flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">🍸</span>
           <div>
             <h1 className="text-sm font-bold uppercase tracking-wider">
-              {bartender?.stall?.name || 'BAR STATION'}
+              {bartender?.stall?.name || 'BAR COUNTER'}
             </h1>
             <p className="text-[11px] text-neutral-400 font-mono">
               Staff: <span className="text-white font-bold">{bartender?.name || 'Bartender'}</span>
@@ -206,17 +190,27 @@ export default function BartenderDashboardPage() {
           </div>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="px-3 py-1.5 bg-white text-black font-bold text-xs uppercase rounded-md border border-black hover:bg-neutral-200 shrink-0 whitespace-nowrap flex items-center gap-1"
-        >
-          <span>🚪</span> LOGOUT
-        </button>
+        <div className="flex items-center gap-2">
+          {scannedOrder && (
+            <button
+              onClick={handleResetScanner}
+              className="px-2.5 py-1.5 bg-neutral-800 text-white font-bold text-xs uppercase rounded-md border border-neutral-700 hover:bg-neutral-700"
+            >
+              🔄 SCAN NEXT
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="px-3 py-1.5 bg-white text-black font-bold text-xs uppercase rounded-md border border-black hover:bg-neutral-200 shrink-0"
+          >
+            LOGOUT
+          </button>
+        </div>
       </header>
 
-      {/* Main Full-Screen Camera & Order View */}
+      {/* Main Scanner Body */}
       <main className="flex-1 max-w-lg w-full mx-auto p-4 flex flex-col items-center justify-start space-y-4">
-        {/* Full-Screen Camera Viewfinder */}
+        {/* Camera Viewfinder */}
         <div className="w-full relative aspect-square bg-black border-4 border-black rounded-2xl overflow-hidden shadow-md flex items-center justify-center">
           <video
             ref={videoRef}
@@ -225,177 +219,145 @@ export default function BartenderDashboardPage() {
             muted
           />
 
-          {/* Target Scanning Reticle Overlay */}
           <div className="absolute inset-8 border-2 border-dashed border-white rounded-xl pointer-events-none flex items-center justify-center">
-            <span className="text-white/60 text-xs font-mono font-bold uppercase bg-black/60 px-3 py-1 rounded">
+            <span className="text-white/75 text-xs font-mono font-bold uppercase bg-black/60 px-3 py-1 rounded">
               ALIGN CUSTOMER QR CODE
             </span>
           </div>
         </div>
 
-        {/* Scan Input / Order ID Search */}
-        <div className="w-full">
+        {/* Search / Scan Input Form */}
+        <form onSubmit={handleManualSearch} className="w-full">
           <label className="block text-xs font-bold uppercase tracking-wider text-black mb-1">
-            Scan Result / Enter Order ID or Token #
+            Order ID or Token Number
           </label>
-          <input
-            type="text"
-            placeholder="Scan QR or type Token / Order ID..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full px-4 py-3 bg-white border-2 border-black rounded-xl text-sm font-mono font-bold text-black focus:outline-none focus:ring-2 focus:ring-black"
-          />
-        </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Scan QR or type Token / Order ID..."
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                if (e.target.value.trim()) {
+                  fetchOrderLive(e.target.value.trim());
+                } else {
+                  setScannedOrder(null);
+                }
+              }}
+              className="flex-1 px-4 py-3 bg-white border-2 border-black rounded-xl text-sm font-mono font-bold text-black focus:outline-none focus:ring-2 focus:ring-black"
+            />
+            <button
+              type="submit"
+              className="px-4 py-3 bg-black text-white text-xs font-bold uppercase rounded-xl hover:bg-neutral-800"
+            >
+              FIND
+            </button>
+          </div>
+        </form>
 
-        {/* Status Toast */}
+        {/* Status Notification Toast */}
         {statusMessage && (
-          <div className="w-full py-3 bg-black text-white text-center font-mono font-bold text-sm rounded-xl uppercase">
+          <div className="w-full py-3 bg-black text-white text-center font-mono font-bold text-sm rounded-xl uppercase shadow-md">
             {statusMessage}
           </div>
         )}
 
-        {/* Order Details Card — from QR scan or backend search */}
-        {qrOrderData ? (
-          <div className="w-full bg-white border-2 border-black rounded-xl p-4 space-y-3 shadow-md">
-            <div className="flex items-center justify-between border-b-2 border-black pb-2">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-neutral-500 font-mono">
-                  TOKEN NUMBER
-                </span>
-                <div className="text-2xl font-black font-mono text-black">
-                  {qrOrderData.token || '#' + qrOrderData.orderId.slice(-4)}
-                </div>
-              </div>
-
-              <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold font-mono rounded-md uppercase">
-                QR SCANNED
-              </span>
-            </div>
-
-            <div className="space-y-1 my-2">
-              {qrOrderData.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-xs font-semibold">
-                  <span>
-                    {item.qty}× {item.name}
-                  </span>
-                  <span className="font-mono font-bold">₹{item.price * item.qty}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 border-t border-black flex justify-between font-mono text-xs font-bold">
-              <span>TOTAL AMOUNT:</span>
-              <span>₹{qrOrderData.total}</span>
-            </div>
-
-            <div className="text-[10px] font-mono text-neutral-500 text-center">
-              Order ID: {qrOrderData.orderId}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleMarkCompleted(qrOrderData.orderId)}
-              disabled={isProcessing}
-              className="w-full py-4 bg-black text-white text-sm font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isProcessing ? 'COMPLETING...' : '✓ MARK COMPLETED & SERVED'}
-            </button>
+        {/* Live Loading Indicator */}
+        {isLoadingOrder && !scannedOrder && (
+          <div className="w-full py-4 text-center font-mono text-xs text-neutral-600 bg-neutral-50 rounded-xl border border-neutral-200">
+            Checking live order status from database...
           </div>
-        ) : scannedOrder ? (
+        )}
+
+        {/* Scanned Order Details Card with Live Database Status */}
+        {scannedOrder && (
           <div className="w-full bg-white border-2 border-black rounded-xl p-4 space-y-3 shadow-md">
+            {/* Header: Token & Live Status Badge */}
             <div className="flex items-center justify-between border-b-2 border-black pb-2">
               <div>
                 <span className="text-[10px] font-bold uppercase text-neutral-500 font-mono">
                   TOKEN NUMBER
                 </span>
                 <div className="text-2xl font-black font-mono text-black">
-                  #{scannedOrder.tokenNumber || scannedOrder.id.slice(-4)}
+                  #{scannedOrder.tokenNumber ? scannedOrder.tokenNumber.replace(/^Token\s*#?/, '') : scannedOrder.id.slice(-4)}
                 </div>
               </div>
 
-              <span className="px-3 py-1 bg-black text-white text-xs font-bold font-mono rounded-md uppercase">
-                {scannedOrder.orderStatus}
-              </span>
+              {scannedOrder.orderStatus === 'completed' ? (
+                <span className="px-3 py-1 bg-amber-600 text-white text-xs font-bold font-mono rounded-md uppercase">
+                  ALREADY COMPLETED
+                </span>
+              ) : (
+                <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold font-mono rounded-md uppercase">
+                  READY TO SERVE
+                </span>
+              )}
             </div>
 
-            {/* Customer & Items */}
+            {/* Customer & Items List */}
             <div>
-              <p className="text-xs font-bold uppercase text-black mb-1">
+              <p className="text-xs font-bold uppercase text-black mb-1.5">
                 Customer: {scannedOrder.customerName || 'Walk-in Guest'}
               </p>
 
-              <div className="space-y-1 my-2">
-                {scannedOrder.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-xs font-semibold">
-                    <span>
-                      {item.quantity}× {item.name}
-                    </span>
-                    <span className="font-mono font-bold">₹{item.price * item.quantity}</span>
-                  </div>
-                ))}
+              <div className="space-y-1.5 my-2 max-h-48 overflow-y-auto">
+                {scannedOrder.items && scannedOrder.items.length > 0 ? (
+                  scannedOrder.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs font-semibold p-1.5 bg-neutral-50 rounded border border-neutral-200">
+                      <span className="font-bold">
+                        {item.quantity} × {item.name}
+                      </span>
+                      <span className="font-mono font-bold">₹{item.price * item.quantity}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-neutral-500 font-mono">No items listed</p>
+                )}
               </div>
             </div>
 
+            {/* Total Amount */}
             <div className="pt-2 border-t border-black flex justify-between font-mono text-xs font-bold">
-              <span>TOTAL AMOUNT:</span>
+              <span>TOTAL PAID:</span>
               <span>₹{scannedOrder.totalAmount}</span>
             </div>
 
-            {scannedOrder.orderStatus !== 'completed' ? (
+            <div className="text-[10px] font-mono text-neutral-500 text-center">
+              Order ID: #{scannedOrder.id}
+            </div>
+
+            {/* Actions / Status Box */}
+            {scannedOrder.orderStatus === 'completed' ? (
+              <div className="w-full p-4 bg-amber-50 border-2 border-amber-500 text-amber-950 rounded-xl text-center space-y-1">
+                <p className="text-xs font-black uppercase font-mono tracking-wide">
+                  ⚠️ THIS ORDER WAS ALREADY COMPLETED & SERVED
+                </p>
+                <p className="text-[11px] font-mono text-amber-800">
+                  {scannedOrder.completedAt
+                    ? 'Served at ' + new Date(scannedOrder.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : 'Order already fulfilled and closed'}
+                </p>
+              </div>
+            ) : (
               <button
                 type="button"
                 onClick={() => handleMarkCompleted(scannedOrder.id)}
                 disabled={isProcessing}
-                className="w-full py-4 bg-black text-white text-sm font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-black text-white text-sm font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
               >
-                {isProcessing ? 'COMPLETING...' : '✓ COMPLETED'}
+                {isProcessing ? 'COMPLETING...' : '✓ MARK COMPLETED & SERVED'}
               </button>
-            ) : (
-              <div className="w-full py-3 bg-neutral-200 border-2 border-black text-black font-bold text-xs uppercase text-center rounded-xl font-mono">
-                ✓ ORDER ALREADY COMPLETED
-              </div>
             )}
           </div>
-        ) : searchInput.trim() ? (
-          <div className="w-full p-4 border-2 border-dashed border-black rounded-xl text-center text-xs font-mono text-neutral-600">
-            No matching order found for &quot;{searchInput}&quot;
+        )}
+
+        {/* Not Found State */}
+        {!isLoadingOrder && !scannedOrder && searchInput.trim() && (
+          <div className="w-full p-4 border-2 border-dashed border-neutral-300 rounded-xl text-center text-xs font-mono text-neutral-500">
+            No order found matching &quot;{searchInput}&quot;
           </div>
-        ) : (
-          /* Live Recent Pending Orders Quick Select List */
-          orders.filter((o) => o.orderStatus !== 'completed').length > 0 && (
-            <div className="w-full border-2 border-black rounded-xl p-3 bg-white">
-              <span className="text-[10px] font-bold uppercase text-black font-mono block mb-2">
-                Picks from Live Queue ({orders.filter((o) => o.orderStatus !== 'completed').length} active):
-              </span>
-              <div className="space-y-1.5 max-h-44 overflow-y-auto">
-                {orders
-                  .filter((o) => o.orderStatus !== 'completed')
-                  .slice(0, 5)
-                  .map((o) => (
-                    <div
-                      key={o.id}
-                      onClick={() => setSearchInput(o.tokenNumber || o.id)}
-                      className="p-2 border border-black rounded-lg hover:bg-neutral-100 cursor-pointer flex items-center justify-between text-xs"
-                    >
-                      <span className="font-mono font-bold">#{o.tokenNumber || o.id.slice(-4)}</span>
-                      <span className="truncate max-w-[160px] font-semibold">{o.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkCompleted(o.id);
-                        }}
-                        className="px-2.5 py-1 bg-black text-white text-[10px] font-bold uppercase rounded"
-                      >
-                        ✓ COMPLETED
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )
         )}
       </main>
     </div>
   );
 }
-
