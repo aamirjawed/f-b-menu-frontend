@@ -22,6 +22,14 @@ export default function BartenderDashboardPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // Direct QR payload data (displayed instantly from QR scan, no backend lookup)
+  const [qrOrderData, setQrOrderData] = useState<{
+    orderId: string;
+    token: string;
+    items: { name: string; qty: number; price: number }[];
+    total: number;
+  } | null>(null);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -63,8 +71,11 @@ export default function BartenderDashboardPage() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
-  // Enable Camera Stream for QR Scanning
+  // Enable Camera Stream + Real-Time QR Scanning via BarcodeDetector
   useEffect(() => {
+    let scanInterval: ReturnType<typeof setInterval> | null = null;
+    let lastScannedValue = '';
+
     if (typeof window !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ video: { facingMode: 'environment' } })
@@ -74,6 +85,54 @@ export default function BartenderDashboardPage() {
             videoRef.current.srcObject = stream;
             videoRef.current.play().catch(() => {});
           }
+
+          // Start QR scanning loop using BarcodeDetector API
+          if ('BarcodeDetector' in window) {
+            const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+
+            scanInterval = setInterval(async () => {
+              if (!videoRef.current || videoRef.current.readyState < 2) return;
+
+              try {
+                const barcodes = await detector.detect(videoRef.current);
+                if (barcodes.length > 0) {
+                  const rawValue = barcodes[0].rawValue;
+                  if (!rawValue || rawValue === lastScannedValue) return;
+                  lastScannedValue = rawValue;
+
+                  // Haptic vibration feedback on scan
+                  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+                  // Try to parse QR JSON payload from OrderSuccessModal
+                  try {
+                    const parsed = JSON.parse(rawValue);
+                    if (parsed.orderId && parsed.items) {
+                      // Full order QR payload — display directly
+                      setQrOrderData({
+                        orderId: parsed.orderId,
+                        token: parsed.token || '',
+                        items: Array.isArray(parsed.items) ? parsed.items : [],
+                        total: parsed.total || 0,
+                      });
+                      setSearchInput(parsed.orderId);
+                      setScannedOrder(null);
+                    } else {
+                      const searchTerm = parsed.orderId || parsed.token || parsed.id || rawValue;
+                      setSearchInput(String(searchTerm).replace(/^#/, ''));
+                    }
+                  } catch {
+                    // Not JSON — use raw text as search (e.g. plain Order ID or Token #)
+                    setQrOrderData(null);
+                    setSearchInput(rawValue.replace(/^#/, ''));
+                  }
+                }
+              } catch {
+                // BarcodeDetector.detect() can throw on some frames, ignore
+              }
+            }, 350);
+          } else {
+            console.warn('[QR Scanner] BarcodeDetector API not supported in this browser. Use manual token entry.');
+          }
         })
         .catch((err) => {
           console.warn('[Camera] Unable to access camera stream:', err);
@@ -81,6 +140,7 @@ export default function BartenderDashboardPage() {
     }
 
     return () => {
+      if (scanInterval) clearInterval(scanInterval);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -117,6 +177,7 @@ export default function BartenderDashboardPage() {
       setStatusMessage('✓ ORDER COMPLETED');
       setSearchInput('');
       setScannedOrder(null);
+      setQrOrderData(null);
       fetchOrders();
       setTimeout(() => setStatusMessage(null), 2000);
     } else {
@@ -193,8 +254,54 @@ export default function BartenderDashboardPage() {
           </div>
         )}
 
-        {/* Order Details Card */}
-        {scannedOrder ? (
+        {/* Order Details Card — from QR scan or backend search */}
+        {qrOrderData ? (
+          <div className="w-full bg-white border-2 border-black rounded-xl p-4 space-y-3 shadow-md">
+            <div className="flex items-center justify-between border-b-2 border-black pb-2">
+              <div>
+                <span className="text-[10px] font-bold uppercase text-neutral-500 font-mono">
+                  TOKEN NUMBER
+                </span>
+                <div className="text-2xl font-black font-mono text-black">
+                  {qrOrderData.token || '#' + qrOrderData.orderId.slice(-4)}
+                </div>
+              </div>
+
+              <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold font-mono rounded-md uppercase">
+                QR SCANNED
+              </span>
+            </div>
+
+            <div className="space-y-1 my-2">
+              {qrOrderData.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between text-xs font-semibold">
+                  <span>
+                    {item.qty}× {item.name}
+                  </span>
+                  <span className="font-mono font-bold">₹{item.price * item.qty}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-black flex justify-between font-mono text-xs font-bold">
+              <span>TOTAL AMOUNT:</span>
+              <span>₹{qrOrderData.total}</span>
+            </div>
+
+            <div className="text-[10px] font-mono text-neutral-500 text-center">
+              Order ID: {qrOrderData.orderId}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleMarkCompleted(qrOrderData.orderId)}
+              disabled={isProcessing}
+              className="w-full py-4 bg-black text-white text-sm font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isProcessing ? 'COMPLETING...' : '✓ MARK COMPLETED & SERVED'}
+            </button>
+          </div>
+        ) : scannedOrder ? (
           <div className="w-full bg-white border-2 border-black rounded-xl p-4 space-y-3 shadow-md">
             <div className="flex items-center justify-between border-b-2 border-black pb-2">
               <div>
@@ -234,7 +341,6 @@ export default function BartenderDashboardPage() {
               <span>₹{scannedOrder.totalAmount}</span>
             </div>
 
-            {/* SINGLE COMPLETED BUTTON */}
             {scannedOrder.orderStatus !== 'completed' ? (
               <button
                 type="button"

@@ -42,8 +42,11 @@ export const BartenderQrScannerModal: React.FC<BartenderQrScannerModalProps> = (
     setMatchedOrder(found || null);
   }, [searchInput, orders]);
 
-  // Camera stream activation
+  // Camera stream activation + Real-Time QR Scanning
   useEffect(() => {
+    let scanInterval: ReturnType<typeof setInterval> | null = null;
+    let lastScannedValue = '';
+
     if (isOpen && isCameraActive) {
       navigator.mediaDevices
         ?.getUserMedia({ video: { facingMode: 'environment' } })
@@ -52,6 +55,39 @@ export const BartenderQrScannerModal: React.FC<BartenderQrScannerModalProps> = (
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
             videoRef.current.play();
+          }
+
+          // Start QR scanning loop using BarcodeDetector API
+          if ('BarcodeDetector' in window) {
+            const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+
+            scanInterval = setInterval(async () => {
+              if (!videoRef.current || videoRef.current.readyState < 2) return;
+
+              try {
+                const barcodes = await detector.detect(videoRef.current);
+                if (barcodes.length > 0) {
+                  const rawValue = barcodes[0].rawValue;
+                  if (!rawValue || rawValue === lastScannedValue) return;
+                  lastScannedValue = rawValue;
+
+                  // Haptic vibration feedback on scan
+                  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+                  // Try to parse QR JSON payload from OrderSuccessModal
+                  try {
+                    const parsed = JSON.parse(rawValue);
+                    const searchTerm = parsed.orderId || parsed.token || parsed.id || rawValue;
+                    setSearchInput(String(searchTerm).replace(/^#/, ''));
+                  } catch {
+                    // Not JSON — use raw text as search
+                    setSearchInput(rawValue.replace(/^#/, ''));
+                  }
+                }
+              } catch {
+                // BarcodeDetector.detect() can throw on some frames, ignore
+              }
+            }, 350);
           }
         })
         .catch((err) => {
@@ -66,6 +102,7 @@ export const BartenderQrScannerModal: React.FC<BartenderQrScannerModalProps> = (
     }
 
     return () => {
+      if (scanInterval) clearInterval(scanInterval);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
